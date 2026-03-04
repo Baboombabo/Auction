@@ -78,7 +78,38 @@ describe("MyAuction", function () {
   });
 
   // test of withdraw function
-  it("should make withdrawals", async () => {
+  it("should make withdrawals after auction has been ended", async () => {
+    for (let i = 0; i < sampleBidAmountWei.length; i++) {
+      const ct = await auction.connect(bidders[i]);
+      const tx = await ct.bid({value: sampleBidAmountWei[i]});
+      const receipt = await tx.wait();
+  }
+  let _ct = await auction.connect(owner);
+  const state1 = await _ct.STATE();
+  expect(state1).to.equal(AS.STARTED);
+  const tx = await _ct.endAuction();
+  await tx.wait(); // Wait for transaction to be mined (stored on blockchain)
+  const state2 = await _ct.STATE();
+  expect(state2).to.equal(AS.ENDED);
+
+    const highestBidder = await _ct.highestBidder();
+    for (let i = 0; i < sampleBidAmountWei.length; i++) {
+      if(bidders[i].address !== highestBidder) {
+        const ct = await auction.connect(bidders[i]);
+        await expect(ct.withdraw()).to.changeEtherBalance(bidders[i], sampleBidAmountWei[i]);
+      } else {
+        const ct = await auction.connect(bidders[i]);
+        await expect(ct.withdraw()).to.be.revertedWith("You can not make a withdraw");
+      }
+    }
+    _ct = await auction.connect(owner);
+    const highestBid = await _ct.highestBid();
+    await expect(_ct.withdraw()).to.changeEtherBalance(owner, highestBid);
+  });
+
+  it("should make withdrawals after auction has be cancelled", async () => {
     expect.fail();
   });
+
 });
+

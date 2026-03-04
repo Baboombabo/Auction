@@ -64,6 +64,23 @@ contract MyAuction is Auction {
         STATE = AuctionState.CANCELLED;
         emit CancelledEvent("This auction is cancelLed", block.timestamp);
     }
-    function withdraw() override external {}
+    function withdraw() override external {
+        // There are 3 possible cases
+        uint amount;
+        if(msg.sender == highestBidder) { // case 1:highest bidder
+            require(STATE == AuctionState.CANCELLED, "You can not make a withdraw");
+            amount = highestBid; 
+        } else if (msg.sender == owner) { // case 2: owner
+            require(STATE == AuctionState.ENDED, "Owner can not withdraw");
+            amount = highestBid;
+            highestBid = 0;
+        } else { // case 3: non-winner or non-owner
+            require(STATE != AuctionState.STARTED, "You can not withdraw at a moment");
+            amount = bids[msg.sender];
+            bids[msg.sender] = 0;
+        }
+        payable(msg.sender).transfer(amount);
+        emit WithdrawnEvent(msg.sender, amount, block.timestamp);
+    }
     function getHighestBid() override public view returns (uint256) {}
 }
